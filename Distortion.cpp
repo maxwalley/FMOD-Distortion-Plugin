@@ -24,18 +24,22 @@ FMOD_RESULT F_CALLBACK release(FMOD_DSP_STATE* state);
 FMOD_RESULT F_CALLBACK reset(FMOD_DSP_STATE* state);
 FMOD_RESULT F_CALLBACK read(FMOD_DSP_STATE *dsp_state, float *inbuffer, float *outbuffer, unsigned int length, int inchannels, int *outchannels);
 FMOD_RESULT F_CALLBACK setFloat(FMOD_DSP_STATE* state, int index, float value);
+FMOD_RESULT F_CALLBACK setBool(FMOD_DSP_STATE* state, int index, FMOD_BOOL value);
 FMOD_RESULT F_CALLBACK getFloat(FMOD_DSP_STATE* state, int index, float* value, char* valuestr);
+FMOD_RESULT F_CALLBACK getBool(FMOD_DSP_STATE* state, int index, FMOD_BOOL* value, char* valuestr);
 FMOD_RESULT F_CALLBACK shouldIProcess(FMOD_DSP_STATE *dsp_state, FMOD_BOOL inputsidle, unsigned int length, FMOD_CHANNELMASK inmask, int inchannels, FMOD_SPEAKERMODE speakermode);
 
 //Parameter definitions here
 FMOD_DSP_PARAMETER_DESC gain;
 FMOD_DSP_PARAMETER_DESC hardClipLevel;
+FMOD_DSP_PARAMETER_DESC shapeOn;
 
 //List of pointers to parameters
-FMOD_DSP_PARAMETER_DESC* params[2]
+FMOD_DSP_PARAMETER_DESC* params[3]
 {
     &gain,
-    &hardClipLevel
+    &hardClipLevel,
+    &shapeOn
 };
 
 FMOD_DSP_DESCRIPTION pluginDesc =
@@ -51,15 +55,15 @@ FMOD_DSP_DESCRIPTION pluginDesc =
     read,
     0,
     0,
-    2,
+    3,
     params,
     setFloat,
     0,
-    0,
+    setBool,
     0,
     getFloat,
     0,
-    0,
+    getBool,
     0,
     shouldIProcess,
     0,
@@ -82,6 +86,7 @@ extern "C"
     {
         FMOD_DSP_INIT_PARAMDESC_FLOAT(gain, "Gain", "dB", "Level Gain", -80.0, 10.0, 0.0);
         FMOD_DSP_INIT_PARAMDESC_FLOAT(hardClipLevel, "Clip Level", "dB", "The level to clip audio at", -40.0, 0, 0);
+        FMOD_DSP_INIT_PARAMDESC_BOOL(shapeOn, "Shape?", "", "Whether to apply soft clipping to audio", 0, 0);
         return &pluginDesc;
     }
 }
@@ -97,9 +102,13 @@ public:
     void setClipLevel(float newLevel);
     float getClipLevel() const;
     
+    void setShapeOn(FMOD_BOOL on);
+    FMOD_BOOL getShapeOn() const;
+    
 private:
     float pGain;
     float clipLevel;
+    FMOD_BOOL shapeSetting;
 };
 
 pluginData::pluginData()
@@ -126,6 +135,16 @@ void pluginData::setClipLevel(float newLevel)
 float pluginData::getClipLevel() const
 {
     return clipLevel;
+}
+
+void pluginData::setShapeOn(FMOD_BOOL on)
+{
+    shapeSetting = on;
+}
+
+FMOD_BOOL pluginData::getShapeOn() const
+{
+    return shapeSetting;
 }
 
 //Referenced from FMOD gain example
@@ -175,7 +194,10 @@ FMOD_RESULT F_CALLBACK read(FMOD_DSP_STATE *dsp_state, float *inbuffer, float *o
                 sample = data->getClipLevel();
             }
             
-            sample = sin(0.5 * M_PI * sample);
+            if(data->getShapeOn() == true)
+            {
+                sample = sin(0.5 * M_PI * sample);
+            }
             
             *outbuffer++ = sample;
         }
@@ -201,6 +223,17 @@ FMOD_RESULT F_CALLBACK setFloat(FMOD_DSP_STATE* state, int index, float value)
     return FMOD_ERR_INVALID_PARAM;
 }
 
+FMOD_RESULT F_CALLBACK setBool(FMOD_DSP_STATE* state, int index, FMOD_BOOL value)
+{
+    if(index == 2)
+    {
+        pluginData* data = (pluginData*)state->plugindata;
+        data->setShapeOn(value);
+        return FMOD_OK;
+    }
+    return FMOD_ERR_INVALID_PARAM;
+}
+
 FMOD_RESULT F_CALLBACK getFloat(FMOD_DSP_STATE* state, int index, float* value, char* valuestr)
 {
     if(index == 0)
@@ -215,6 +248,18 @@ FMOD_RESULT F_CALLBACK getFloat(FMOD_DSP_STATE* state, int index, float* value, 
         pluginData* data = (pluginData*)state->plugindata;
         *value = data->getClipLevel();
         sprintf(valuestr, "%f", data->getClipLevel());
+        return FMOD_OK;
+    }
+    return FMOD_ERR_INVALID_PARAM;
+}
+
+FMOD_RESULT F_CALLBACK getBool(FMOD_DSP_STATE* state, int index, FMOD_BOOL* value, char* valuestr)
+{
+    if(index == 2)
+    {
+        pluginData* data = (pluginData*)state->plugindata;
+        *value = data->getShapeOn();
+        sprintf(valuestr, "%d", data->getShapeOn());
         return FMOD_OK;
     }
     return FMOD_ERR_INVALID_PARAM;
