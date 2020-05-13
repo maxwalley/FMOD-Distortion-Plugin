@@ -81,7 +81,7 @@ extern "C"
     F_EXPORT FMOD_DSP_DESCRIPTION* F_CALL FMODGetDSPDescription()
     {
         FMOD_DSP_INIT_PARAMDESC_FLOAT(gain, "Gain", "dB", "Level Gain", -80.0, 10.0, 0.0);
-        FMOD_DSP_INIT_PARAMDESC_FLOAT(hardClipLevel, "Hard-Clip Level", "dB", "The level to clip audio at", -40.0, 0, 0);
+        FMOD_DSP_INIT_PARAMDESC_FLOAT(hardClipLevel, "Clip Level", "dB", "The level to clip audio at", -40.0, 0, 0);
         return &pluginDesc;
     }
 }
@@ -106,8 +106,8 @@ pluginData::pluginData()
 {
     pGain = 1.0;
     clipLevel = 1;
-    
 }
+
 void pluginData::setGain(float newGain)
 {
     pGain = newGain;
@@ -154,9 +154,6 @@ FMOD_RESULT F_CALLBACK release(FMOD_DSP_STATE* state)
 
 FMOD_RESULT F_CALLBACK reset(FMOD_DSP_STATE* state)
 {
-    //pluginData* data = (pluginData*)state->plugindata;
-    //data->setGain(1);
-    //data->setClipLevel(1);
     return FMOD_OK;
 }
 
@@ -177,6 +174,8 @@ FMOD_RESULT F_CALLBACK read(FMOD_DSP_STATE *dsp_state, float *inbuffer, float *o
             {
                 sample = data->getClipLevel();
             }
+            
+            sample = sin(0.5 * M_PI * sample);
             
             *outbuffer++ = sample;
         }
